@@ -72,11 +72,44 @@ const CSS = [
       '$1[]</script>'
     );
 
-    // 5) 广告标题（“热门应用”等）
+    // 5) 视频播放器广告：清空 DPlayer data-config 内嵌的广告配置
+    //    （video_player_ads 播放器悬浮广告 / video_ads_url 片前视频广告 / ads_jump_url 跳转广告）
+    //    站点实际以单引号属性包裹原生 JSON（未转义引号），转义变体一并兜底
+    body = body.replace(/"video_player_ads":\[[\s\S]*?\]/g, '"video_player_ads":[]');
+    body = body.replace(/\\"video_player_ads\\":\[[\s\S]*?\]/g, '\\"video_player_ads\\":[]');
+    body = body.replace(/"video_ads_url":"[^"]*"/g, '"video_ads_url":""');
+    body = body.replace(/"ads_jump_url":"[^"]*"/g, '"ads_jump_url":""');
+    body = body.replace(/\\"video_ads_url\\":\\"[\s\S]*?\\"/g, '\\"video_ads_url\\":\\"\\"');
+    body = body.replace(/\\"ads_jump_url\\":\\"[\s\S]*?\\"/g, '\\"ads_jump_url\\":\\"\\"');
+    body = body.replace(/"ads_duration":\d+/g, '"ads_duration":0');
+    body = body.replace(/\\"ads_duration\\":\d+/g, '\\"ads_duration\\":0');
+
+    // 6) 广告标题（“热门应用”等）
     body = body.replace(/<div[^>]*class="[^"]*ads-title[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '');
 
-    // 6) CSS 兜底：隐藏正则遗漏的容器（浮标、空按钮栏等）
-    body = body.replace(/<\/head>/i, '<style>' + CSS + '</style></head>');
+    // 7) CSS 兜底：隐藏正则遗漏的容器（浮标、空按钮栏等），并为电脑端注入适配样式与竖屏视频限宽
+    const desktopCSS = [
+      '@media (min-width: 992px) {',
+      // 放开 710px 窄栏，桌面端用宽容器
+      '.container{max-width:1200px!important}',
+      // 文章列表改为多列网格（列表页 #index / 归档与详情页 #archive）
+      '#index,#archive{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));column-gap:1.25rem}',
+      '#index>*:not(article),#archive>*:not(article){grid-column:1/-1}',
+      '#index article,#archive article{margin-bottom:1.25rem!important}',
+      // 正文限宽居中，保证可读性
+      '.post-content{max-width:760px;margin-left:auto;margin-right:auto}',
+      '}'
+    ].join('');
+    const portraitFixJS =
+      "document.addEventListener('DOMContentLoaded',function(){try{" +
+      "document.querySelectorAll('.dplayer').forEach(function(el){" +
+      "var m=(el.getAttribute('style')||'').match(/aspect-ratio:\\s*(\\d+)\\s*\\/\\s*(\\d+)/);" +
+      'if(m&&+m[2]>+m[1]){el.style.maxWidth=Math.round(85*(+m[1]/+m[2]))+"vh";}' +
+      '});}catch(e){}});';
+    body = body.replace(
+      /<\/head>/i,
+      '<style>' + CSS + desktopCSS + '</style><script>' + portraitFixJS + '</script></head>'
+    );
 
     $done({ body: body });
   } catch (e) {
