@@ -99,12 +99,34 @@ const CSS = [
       // 单文章页面（如未来模板复用容器）占满整行，避免被压缩成单列宽
       '#index>article:only-of-type,#archive>article:only-of-type{grid-column:1/-1}',
       '#index article,#archive article{margin-bottom:1.25rem!important}',
-      // 详情页统一 860px 单列：标题/正文/评论区左缘对齐
+      // 中等宽度下的详情页：860px 单列居中
       '#post>article.post{max-width:860px;margin-left:auto;margin-right:auto}',
       '.post-content{max-width:100%!important}',
       '#comments{max-width:860px;margin-left:auto;margin-right:auto}',
       // 正文图片：限高 85vh、按原比例缩放并居中（电脑端不再铺满整列产生超高图）
       '.post-content p>img{display:block;max-height:85vh;width:auto;max-width:100%;margin:6px auto}',
+      // 连续多张正文图片合并为多列网格（由注入 JS 包裹为 .dsk-img-grid）
+      '.post-content .dsk-img-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin:8px 0;align-items:start}',
+      '.dsk-img-grid>p{margin:0!important;min-width:0}',
+      '.dsk-img-grid>p>img,.dsk-img-grid>p>a>img{width:100%!important;height:auto!important;max-height:none!important;max-width:none!important;display:block;margin:0!important}',
+      '}',
+      // 宽屏（>=1068px）详情页双栏：文章 860 + 吸顶侧栏 316，消除左右大片空白
+      '@media (min-width: 1068px) {',
+      '#post.dsk-2col{display:flex!important;align-items:flex-start;gap:24px}',
+      '#post.dsk-2col>article.post{flex:1 1 auto;max-width:860px;margin:0}',
+      '#dsk-sidebar{flex:0 0 316px;width:316px;position:sticky;top:88px;max-height:calc(100vh - 108px);overflow-y:auto;overflow-x:hidden}',
+      '#dsk-sidebar *{max-width:100%}',
+      '#dsk-sidebar .hot-news-section,#dsk-sidebar .content-tabs{margin-top:0}',
+      // 侧栏内把官宣表/地址表改为纵向堆叠，链接可断行
+      '#dsk-sidebar table,#dsk-sidebar tbody,#dsk-sidebar tr,#dsk-sidebar td{display:block!important;width:100%!important}',
+      '#dsk-sidebar td{margin-bottom:10px}',
+      '#dsk-sidebar a{word-break:break-all}',
+      '#dsk-sidebar .tip,#dsk-sidebar .tip-content{white-space:normal!important}',
+      // 评论区与文章左栏对齐
+      '#body-bottom .container{max-width:1200px}',
+      '#comments{max-width:860px;margin-left:0;margin-right:auto}',
+      // #body 的 overflow:hidden 会使 sticky 失效，需放开
+      '#body{overflow:visible!important}',
       '}'
     ].join('');
     const portraitFixFragment =
@@ -112,14 +134,47 @@ const CSS = [
       "var m=(el.getAttribute('style')||'').match(/aspect-ratio:\\s*(\\d+)\\s*\\/\\s*(\\d+)/);" +
       'if(m&&+m[2]>+m[1]){el.style.maxWidth=Math.round(85*(+m[1]/+m[2]))+"vh";}' +
       '});';
-    const portraitFixJS =
-      "function fixPortraitDplayer(){try{" + portraitFixFragment + '}catch(e){}}' +
-      "document.addEventListener('DOMContentLoaded',fixPortraitDplayer);" +
+    // 连续多张正文图片合并为网格容器（多列展示）
+    const imageGridJS =
+      'function groupImageGrid(){try{' +
+      'if(window.innerWidth<768)return;' +
+      "var pc=document.querySelector('.post-content');" +
+      "if(!pc||document.querySelectorAll('.dsk-img-grid').length)return;" +
+      'var run=[];' +
+      'function flush(){if(run.length>=2){' +
+      "var g=document.createElement('div');g.className='dsk-img-grid';" +
+      'run[0].parentNode.insertBefore(g,run[0]);' +
+      'run.forEach(function(p){g.appendChild(p);});}run=[];}' +
+      'Array.prototype.forEach.call(pc.children,function(el){' +
+      "if(el.tagName==='P'&&el.querySelector('img')){run.push(el);}else{flush();}" +
+      '});flush();' +
+      '}catch(e){}}';
+    // 宽屏时把页面自带的推荐区块移入侧栏；窗口变窄时移回正文
+    const sidebarJS =
+      'function buildDesktopSidebar(){try{' +
+      "var post=document.querySelector('#post');if(!post)return;" +
+      "var side=document.getElementById('dsk-sidebar');var wide=window.innerWidth>=1068;" +
+      "if(wide&&!side){" +
+      "var art=post.querySelector('article.post');if(!art)return;" +
+      "side=document.createElement('aside');side.id='dsk-sidebar';" +
+      "['.hot-news-section','.content-tabs'].forEach(function(sel){var el=document.querySelector(sel);if(el)side.appendChild(el);});" +
+      "if(side.children.length){post.appendChild(side);post.classList.add('dsk-2col');}" +
+      "}else if(!wide&&side){" +
+      "var pc=document.querySelector('.post-content');if(pc){while(side.firstChild)pc.appendChild(side.firstChild);}" +
+      "side.parentNode.removeChild(side);post.classList.remove('dsk-2col');" +
+      '}}catch(e){}}';
+    const injectedJS =
+      'function fixPortraitDplayer(){try{' + portraitFixFragment + '}catch(e){}}' +
+      sidebarJS +
+      imageGridJS +
+      'function applyDesktop(){fixPortraitDplayer();buildDesktopSidebar();groupImageGrid();}' +
+      "document.addEventListener('DOMContentLoaded',applyDesktop);" +
       // 播放器由 element.js 异步初始化，延迟再跑一次兜底
-      'setTimeout(fixPortraitDplayer,1500);';
+      'setTimeout(applyDesktop,1500);' +
+      "window.addEventListener('resize',function(){setTimeout(function(){buildDesktopSidebar();groupImageGrid();},200);});";
     body = body.replace(
       /<\/head>/i,
-      '<style>' + CSS + desktopCSS + '</style><script>' + portraitFixJS + '</script></head>'
+      '<style>' + CSS + desktopCSS + '</style><script>' + injectedJS + '</script></head>'
     );
 
     $done({ body: body });
