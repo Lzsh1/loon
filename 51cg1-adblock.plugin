@@ -1,0 +1,20 @@
+#!name = 51cg1 去广告
+#!desc = 去除 51cg1.com（含镜像站）的列表广告卡片、详情页按钮/banner 广告、悬浮广告、弹窗广告及广告统计。需开启 MITM 并安装信任 Loon CA 证书。脚本地址请替换为你自己托管的 raw 链接。
+#!author = made with ZCode
+#!date = 2026-11-22
+
+[Rule]
+# 广告事件上报接口（eventTracking/report.json）
+DOMAIN-SUFFIX,zyudkkup.com,REJECT
+
+[URL Rewrite]
+# 广告统计/打点脚本 tjtag（版本号通配，主题 JS 不依赖它）
+^https?:\/\/(51cg1\.com|51chigua[123]\.cc|[234]chigua\.cc|51cg61\.cc|51cg72\.cc|nkhpxbko\.cc)\/usr\/themes\/Mirages\/js\/7\.10\.0\/tjtag\.[\d.]+\.js - reject
+
+[Script]
+# http-response 脚本移除页面内广告 DOM / 弹窗数据 / 注入兜底 CSS
+# ★ 请把 script-path 替换为你上传 51cg1.block.js 后得到的 raw 链接
+http-response ^https?:\/\/(51cg1\.com|51chigua[123]\.cc|[234]chigua\.cc|51cg61\.cc|51cg72\.cc|nkhpxbko\.cc)\/ script-path=https://raw.githubusercontent.com/REPLACE_ME/51cg1.block.js, requires-body=true, tag=51cg1去广告, timeout=60
+
+[MITM]
+hostname = 51cg1.com, 51chigua1.cc, 51chigua2.cc, 51chigua3.cc, 2chigua.cc, 3chigua.cc, 51cg61.cc, 51cg72.cc, 4chigua.cc, nkhpxbko.cc
