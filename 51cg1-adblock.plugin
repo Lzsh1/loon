@@ -10,7 +10,7 @@ DOMAIN-SUFFIX,zyudkkup.com,REJECT
 ^https?:\/\/(51cg1\.com|51chigua[123]\.cc|[234]chigua\.cc|51cg61\.cc|51cg72\.cc|nkhpxbko\.cc)\/usr\/themes\/Mirages\/js\/7\.10\.0\/tjtag\.[\d.]+\.js - reject
 
 [Script]
-http-response ^https?:\/\/(51cg1\.com|51chigua[123]\.cc|[234]chigua\.cc|51cg61\.cc|51cg72\.cc|nkhpxbko\.cc)\/ script-path=https://raw.githubusercontent.com/Lzsh1/loon/main/51cg1.block.js,tag=51cg1去广告,requires-body=1,timeout=60
+http-response ^https?:\/\/(51cg1\.com|51chigua[123]\.cc|[234]chigua\.cc|51cg61\.cc|51cg72\.cc|nkhpxbko\.cc)\/ script-path=https://cdn.jsdelivr.net/gh/Lzsh1/loon@a4fcf669ed4c9f03440d6bce811f0cb5218975c6/51cg1.block.js,tag=51cg1去广告,requires-body=1,timeout=60
 
 [MITM]
 hostname = 51cg1.com,51chigua1.cc,51chigua2.cc,51chigua3.cc,2chigua.cc,3chigua.cc,51cg61.cc,51cg72.cc,4chigua.cc,nkhpxbko.cc
