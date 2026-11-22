@@ -89,23 +89,34 @@ const CSS = [
 
     // 7) CSS 兜底：隐藏正则遗漏的容器（浮标、空按钮栏等），并为电脑端注入适配样式与竖屏视频限宽
     const desktopCSS = [
-      '@media (min-width: 992px) {',
+      // 断点 768px：覆盖平板与 125%/150% 缩放的桌面窗口
+      '@media (min-width: 768px) {',
       // 放开 710px 窄栏，桌面端用宽容器
       '.container{max-width:1200px!important}',
-      // 文章列表改为多列网格（列表页 #index / 归档与详情页 #archive）
+      // 文章列表改为多列网格（首页列表 #index，分类/归档 #archive）
       '#index,#archive{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));column-gap:1.25rem}',
       '#index>*:not(article),#archive>*:not(article){grid-column:1/-1}',
+      // 单文章页面（如未来模板复用容器）占满整行，避免被压缩成单列宽
+      '#index>article:only-of-type,#archive>article:only-of-type{grid-column:1/-1}',
       '#index article,#archive article{margin-bottom:1.25rem!important}',
-      // 正文限宽居中，保证可读性
-      '.post-content{max-width:760px;margin-left:auto;margin-right:auto}',
+      // 详情页统一 860px 单列：标题/正文/评论区左缘对齐
+      '#post>article.post{max-width:860px;margin-left:auto;margin-right:auto}',
+      '.post-content{max-width:100%!important}',
+      '#comments{max-width:860px;margin-left:auto;margin-right:auto}',
+      // 正文图片：限高 85vh、按原比例缩放并居中（电脑端不再铺满整列产生超高图）
+      '.post-content p>img{display:block;max-height:85vh;width:auto;max-width:100%;margin:6px auto}',
       '}'
     ].join('');
-    const portraitFixJS =
-      "document.addEventListener('DOMContentLoaded',function(){try{" +
+    const portraitFixFragment =
       "document.querySelectorAll('.dplayer').forEach(function(el){" +
       "var m=(el.getAttribute('style')||'').match(/aspect-ratio:\\s*(\\d+)\\s*\\/\\s*(\\d+)/);" +
       'if(m&&+m[2]>+m[1]){el.style.maxWidth=Math.round(85*(+m[1]/+m[2]))+"vh";}' +
-      '});}catch(e){}});';
+      '});';
+    const portraitFixJS =
+      "function fixPortraitDplayer(){try{" + portraitFixFragment + '}catch(e){}}' +
+      "document.addEventListener('DOMContentLoaded',fixPortraitDplayer);" +
+      // 播放器由 element.js 异步初始化，延迟再跑一次兜底
+      'setTimeout(fixPortraitDplayer,1500);';
     body = body.replace(
       /<\/head>/i,
       '<style>' + CSS + desktopCSS + '</style><script>' + portraitFixJS + '</script></head>'
